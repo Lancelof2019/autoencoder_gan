@@ -471,7 +471,7 @@ class Autoencoder(tf.keras.models.Model):
         d_loss_fake = cross_entropy(tf.zeros_like(d_fake), d_fake)
         discriminator_loss = 0.5 * d_loss_real + 0.5 * d_loss_fake
         generator_loss = self.cross_entropy(tf.ones_like(d_fake), d_fake)
-        total_loss = 0.5 * reconstruction_loss + 0.5 * generator_loss
+        total_loss = 0.4 * reconstruction_loss + 0.4 * generator_loss +0.2*discriminator_loss
 
         return total_loss, reconstruction_loss, discriminator_loss, generator_loss
 
@@ -559,15 +559,19 @@ class Autoencoder(tf.keras.models.Model):
                 # current_loss = self.lossfun(inputs, self.is_train, self.init, logger=None)
 
             # ae_gradients = tape_ae.gradient(total_loss, self.trainable_variables)
-            ae_gradients = tape_ae.gradient(total_loss,
-                                            self.encoder.trainable_variables + self.decoder.trainable_variables)
+            ae_gradients = tape_ae.gradient(total_loss,self.encoder.trainable_variables + self.decoder.trainable_variables)
+            self.optimizer.apply_gradients(zip(ae_gradients, self.encoder.trainable_variables + self.decoder.trainable_variables))
+
 
             d_gradients = tape_d.gradient(discriminator_loss, self.discriminator.trainable_variables)
-
-            self.optimizer.apply_gradients(
-                zip(ae_gradients, self.encoder.trainable_variables + self.decoder.trainable_variables))
-
             self.optimizer.apply_gradients(zip(d_gradients, self.discriminator.trainable_variables))
+
+            gen_gradients = tape_ae.gradient(generator_loss, self.encoder.trainable_variables)
+            self.optimizer.apply_gradients(zip(gen_gradients, self.encoder.trainable_variables))
+
+
+
+
 
             total_loss, reconstruction_loss, discriminator_loss, generator_loss = self.lossfun(inputs, self.is_train,
                                                                                                self.init, logger=None)
